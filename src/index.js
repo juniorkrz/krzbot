@@ -86,7 +86,7 @@ async function handleIncomingMessage(message) {
     }
 
     if (!response){
-      return reactMessage(message, "❌");
+      reactMessage(message, "❌");
     }
 
     console.log("The bot replied: " + response);
