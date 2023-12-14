@@ -4,7 +4,7 @@ const spin_text = require('./utils/utils');
 const {
   DisconnectReason,
   useMultiFileAuthState,
-  isJidGroup
+  isJidGroup,
 } = require("@whiskeysockets/baileys");
 const makeWASocket = require("@whiskeysockets/baileys").default;
 
@@ -24,11 +24,8 @@ async function reactMessage(message, reaction){
 }
 
 async function sendMessage(message, response) {
-  // Send a presence update
-  sock.sendPresenceUpdate("composing", message.key.remoteJid);
-
   // Calculate the delay relative to the length of the response
-  const delay = response.length * 50; // For example, 50 milliseconds per character
+  const delay = response.length * 100; // For example, 100 milliseconds per character
 
   // Wait for the calculated delay
   await new Promise(resolve => setTimeout(resolve, delay));
@@ -83,11 +80,13 @@ async function handleIncomingMessage(message) {
       response = "Modo desenvolvedor está ativo!"
       reactMessage(message, spin_text("{🛠|⚙|🔧|⚒|🪚}"));
     } else {
+      // Send a presence update
+      sock.sendPresenceUpdate("composing", message.key.remoteJid);
       response = await simSimiConversation(senderMessage);
     }
 
     if (!response){
-      reactMessage(message, "❌");
+      return reactMessage(message, "❌");
     }
 
     console.log("The bot replied: " + response);
@@ -121,7 +120,7 @@ async function connectionLogic() {
 
   sock.ev.on("messages.upsert", async(event) => {
     for (const message of event.messages) {
-      if (config.devMode && !config.whitelist.includes(message.key.remoteJid)){
+      if (devMode && !config.whitelist.includes(message.key.remoteJid)){
         console.log("Pulando mensagem, o número não está na whitelist!");
         continue;
       } else {
