@@ -85,7 +85,7 @@ async function handleIncomingMessage(message) {
 
     if(devMode){
       response = "Modo desenvolvedor está ativo!"
-      reactMessage(message, spin_text("{🛠|⚙|🔧|⚒"));
+      reactMessage(message, spin_text("{🛠|⚙|🔧|⚒|🪚}"));
     } else {
       response = await simSimiConversation(senderMessage);
     }
