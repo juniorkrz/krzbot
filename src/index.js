@@ -1,5 +1,6 @@
 const config = require('./config');
 const simSimiConversation = require('./simSimi');
+const spin_text = require('./utils/utils');
 const {
   DisconnectReason,
   useMultiFileAuthState,
@@ -8,6 +9,19 @@ const {
 const makeWASocket = require("@whiskeysockets/baileys").default;
 
 let sock;
+
+const args = process.argv.slice(2);
+const devMode = args.indexOf('--dev') == 0 || config.devMode;
+
+async function reactMessage(message, reaction){
+  const reactionMessage = {
+    react: {
+        text: reaction, // use an empty string to remove the reaction
+        key: message.key
+    }
+  }
+  return await sock.sendMessage(message.key.remoteJid, reactionMessage);
+}
 
 async function sendMessage(message, response) {
   // Send a presence update
@@ -63,7 +77,18 @@ async function handleIncomingMessage(message) {
     const jid = "@" + config.myJid.split("@")[0];
     const senderMessage = body.replace(jid, "").trim();
     console.log(message.pushName + " said: " + senderMessage);
-    const response = await simSimiConversation(senderMessage);
+    let response;
+
+    if (!response){
+      reactMessage(message, "❌");
+    }
+
+    if(devMode){
+      response = "Modo desenvolvedor está ativo!"
+      reactMessage(message, spin_text("{🛠|⚙|🔧|⚒"));
+    } else {
+      response = await simSimiConversation(senderMessage);
+    }
     console.log("The bot replied: " + response);
     await sendMessage(message, response);
   }
@@ -95,7 +120,11 @@ async function connectionLogic() {
 
   sock.ev.on("messages.upsert", async(event) => {
     for (const message of event.messages) {
-      await handleIncomingMessage(message);
+      if (config.devMode && config.whitelist.includes(message.key.remoteJid)){
+        await handleIncomingMessage(message);
+      } else {
+        console.log("Pulando mensagem, o número não está na whitelist!");
+      }
     }
   });
 
