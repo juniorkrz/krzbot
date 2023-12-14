@@ -121,10 +121,11 @@ async function connectionLogic() {
 
   sock.ev.on("messages.upsert", async(event) => {
     for (const message of event.messages) {
-      if (config.devMode && config.whitelist.includes(message.key.remoteJid)){
-        await handleIncomingMessage(message);
-      } else {
+      if (config.devMode && !config.whitelist.includes(message.key.remoteJid)){
         console.log("Pulando mensagem, o número não está na whitelist!");
+        continue;
+      } else {
+        await handleIncomingMessage(message);
       }
     }
   });
