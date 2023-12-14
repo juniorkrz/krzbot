@@ -5,6 +5,7 @@ const {
   DisconnectReason,
   useMultiFileAuthState,
   isJidGroup,
+  WA_DEFAULT_EPHEMERAL
 } = require("@whiskeysockets/baileys");
 const makeWASocket = require("@whiskeysockets/baileys").default;
 
@@ -20,7 +21,7 @@ async function reactMessage(message, reaction){
         key: message.key
     }
   }
-  return await sock.sendMessage(message.key.remoteJid, reactionMessage);
+  return await sock.sendMessage(message.key.remoteJid, reactionMessage, { ephemeralExpiration: WA_DEFAULT_EPHEMERAL });
 }
 
 async function sendMessage(message, response) {
@@ -31,7 +32,7 @@ async function sendMessage(message, response) {
   await new Promise(resolve => setTimeout(resolve, delay));
 
   // Send the actual message
-  return sock.sendMessage(message.key.remoteJid, { text: response }, { quoted: message });
+  return sock.sendMessage(message.key.remoteJid, { text: response }, { quoted: message, ephemeralExpiration: WA_DEFAULT_EPHEMERAL });
 }
 
 function shouldResponse(message) {
@@ -86,7 +87,7 @@ async function handleIncomingMessage(message) {
     }
 
     if (!response){
-      reactMessage(message, "❌");
+      return reactMessage(message, "❌");
     }
 
     console.log("The bot replied: " + response);
