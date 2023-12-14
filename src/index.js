@@ -79,16 +79,17 @@ async function handleIncomingMessage(message) {
     console.log(message.pushName + " said: " + senderMessage);
     let response;
 
-    if (!response){
-      reactMessage(message, "❌");
-    }
-
     if(devMode){
       response = "Modo desenvolvedor está ativo!"
       reactMessage(message, spin_text("{🛠|⚙|🔧|⚒|🪚}"));
     } else {
       response = await simSimiConversation(senderMessage);
     }
+
+    if (!response){
+      reactMessage(message, "❌");
+    }
+
     console.log("The bot replied: " + response);
     await sendMessage(message, response);
   }
