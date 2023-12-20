@@ -31,17 +31,3 @@ async function simSimiConversation(utext) {
 }
 
 module.exports = simSimiConversation;
-
-/* // Exemplo de uso
-const utext = 'Olá';
-simSimiConversation(utext)
-  .then(atext => {
-    if (atext !== null) {
-      console.log(`Resposta do SimSimi: ${atext}`);
-    } else {
-      console.log('Falha na interação com o SimSimi.');
-    }
-  })
-  .catch(error => {
-    console.error('Erro:', error.message);
-  }); */

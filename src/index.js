@@ -37,11 +37,8 @@ async function reactMessage(message, reaction){
 async function sendMessage(message, response) {
   // Calculate the delay relative to the length of the response
   const delay = response.length * 100; // For example, 100 milliseconds per character
-
-  // Wait for the calculated delay
   await new Promise(resolve => setTimeout(resolve, delay));
-
-  // Send the actual message
+  await sock.sendPresenceUpdate('paused', jid)
   return sock.sendMessage(message.key.remoteJid, { text: response }, { quoted: message, ephemeralExpiration: WA_DEFAULT_EPHEMERAL });
 }
 
@@ -92,7 +89,9 @@ async function handleIncomingMessage(message) {
       reactMessage(message, spin_text("{🛠|⚙|🔧|⚒|🪚}"));
     } else {
       // Send a presence update
-      sock.sendPresenceUpdate("composing", message.key.remoteJid);
+      await sock.presenceSubscribe(message.key.remoteJid)
+      await delay(500)
+      await sock.sendPresenceUpdate('composing', message.key.remoteJid)
       response = await simSimiConversation(senderMessage);
     }
 
