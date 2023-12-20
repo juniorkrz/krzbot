@@ -90,7 +90,7 @@ async function handleIncomingMessage(message) {
     } else {
       // Send a presence update
       await sock.presenceSubscribe(message.key.remoteJid)
-      await delay(500)
+      await new Promise(resolve => setTimeout(resolve, 500));
       await sock.sendPresenceUpdate('composing', message.key.remoteJid)
       response = await simSimiConversation(senderMessage);
     }
