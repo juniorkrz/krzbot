@@ -1,25 +1,25 @@
-const config = require('./config');
 const readline = require('readline');
-const simSimiConversation = require('./simSimi');
-const spin_text = require('./utils/utils');
+const P = require('pino')({ level: 'silent' });
 const {
   DisconnectReason,
   useMultiFileAuthState,
   isJidGroup,
   fetchLatestBaileysVersion,
   WA_DEFAULT_EPHEMERAL,
-  delay
-} = require("@whiskeysockets/baileys");
-const makeWASocket = require("@whiskeysockets/baileys").default;
+  delay,
+  jidNormalizedUser,
+  areJidsSameUser,
+} = require('@whiskeysockets/baileys');
+const makeWASocket = require('@whiskeysockets/baileys').default;
 
-const P = require("pino")({
-  level: "silent",
-});
-
-let sock;
+const config = require('./config');
+const simSimiConversation = require('./simSimi');
+const spin_text = require('./utils/utils');
 
 const devMode = process.argv.includes('--dev') || config.devMode;
-const useQrCode = process.argv.includes('--qrcode')
+const useQrCode = process.argv.includes('--qrcode') || config.useQrCode;
+
+let client;
 
 // Read line interface
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -32,26 +32,37 @@ async function reactMessage(message, reaction){
         key: message.key
     }
   }
-  return await sock.sendMessage(message.key.remoteJid, reactionMessage, { ephemeralExpiration: WA_DEFAULT_EPHEMERAL });
+  return await client.sendMessage(message.key.remoteJid, reactionMessage, { ephemeralExpiration: WA_DEFAULT_EPHEMERAL });
 }
 
 async function sendMessage(message, response) {
   await delay(response.length * 100); // For example, 100 milliseconds per character
-  await sock.sendPresenceUpdate('paused', message.key.remoteJid)
-  return sock.sendMessage(message.key.remoteJid, { text: response }, { quoted: message, ephemeralExpiration: WA_DEFAULT_EPHEMERAL });
+  await client.sendPresenceUpdate('paused', message.key.remoteJid)
+  return client.sendMessage(message.key.remoteJid, { text: response }, { quoted: message, ephemeralExpiration: WA_DEFAULT_EPHEMERAL });
+}
+
+function getMentionedJids(message){
+  const mentionedJid = message.message?.extendedTextMessage?.contextInfo?.mentionedJid;
+  const ephemeralMentionedJid = message.message?.ephemeralMessage?.message?.extendedTextMessage?.contextInfo?.mentionedJid;
+  return mentionedJid || ephemeralMentionedJid;
 }
 
 function shouldResponse(message) {
   const isGroup = isJidGroup(message.key.remoteJid);
-  const mentionedJid = message.message?.extendedTextMessage?.contextInfo?.mentionedJid;
-  const ephemeralMentionedJid = message.message?.ephemeralMessage?.message?.extendedTextMessage?.contextInfo?.mentionedJid;
+
+  if (!isGroup){
+    return true;
+  }
+
+  const clientJid = jidNormalizedUser(client.user?.id);
+  const mentionedJids = getMentionedJids(message);
+  const participant = message.message?.extendedTextMessage?.contextInfo?.participant ||
+    message.message?.ephemeralMessage?.message?.extendedTextMessage?.contextInfo?.participant;
 
   // Determine whether the bot should respond based on the message context
   return (
-    !isGroup ||
-    (mentionedJid?.includes(config.myJid) || ephemeralMentionedJid?.includes(config.myJid) ||
-      message.message?.extendedTextMessage?.contextInfo?.participant == config.myJid ||
-      message.message?.ephemeralMessage?.message?.extendedTextMessage?.contextInfo?.participant == config.myJid)
+    mentionedJids?.includes(clientJid) ||
+    areJidsSameUser(participant, clientJid)
   );
 }
 
@@ -66,6 +77,10 @@ function getBody(message) {
   );
 }
 
+function getPhoneFromJid(jid){
+  return jidNormalizedUser(jid).split('@')[0];
+}
+
 async function handleIncomingMessage(message) {
   if (message.key.fromMe ||
     !message.message ||
@@ -78,35 +93,38 @@ async function handleIncomingMessage(message) {
   // Get the message body and check if the bot should respond
   const body = getBody(message);
   if (body && shouldResponse(message)) {
-    const jid = "@" + config.myJid.split("@")[0];
-    const senderMessage = body.replace(jid, "").trim();
-    console.log(message.pushName + " said: " + senderMessage);
+    const clientPhone = '@' + getPhoneFromJid(client.user?.id);
+    const senderMessage = body.replace(clientPhone, '').trim();
+    console.log(message.pushName + ' said: ' + senderMessage);
+
     let response;
 
     if(devMode){
-      response = "Modo desenvolvedor está ativo!"
-      reactMessage(message, spin_text("{🛠|⚙|🔧|⚒|🪚}"));
+      response = 'Developer mode is active!'
+      reactMessage(message, spin_text('{🛠|⚙|🔧|⚒|🪚}'));
     } else {
       // Send a presence update
-      await sock.presenceSubscribe(message.key.remoteJid)
+      await client.presenceSubscribe(message.key.remoteJid)
       await delay(500);
-      await sock.sendPresenceUpdate('composing', message.key.remoteJid)
+      await client.sendPresenceUpdate('composing', message.key.remoteJid)
       response = await simSimiConversation(senderMessage);
     }
 
     if (!response){
-      return reactMessage(message, "❌");
+      await client.sendPresenceUpdate('paused', message.key.remoteJid)
+      return reactMessage(message, '❌');
     }
 
-    console.log("The bot replied: " + response);
+    console.log('The bot replied: ' + response);
     await sendMessage(message, response);
   }
 }
 
 async function connectionLogic() {
-  const { state, saveCreds } = await useMultiFileAuthState("auth_info_baileys");
+  console.log('Starting...')
+  const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
   const { version, isLatest } = await fetchLatestBaileysVersion();
-  sock = makeWASocket({
+  client = makeWASocket({
     version: version,
     logger: P,
     printQRInTerminal: useQrCode,
@@ -116,35 +134,41 @@ async function connectionLogic() {
   });
 
   // Pairing code for Web clients
-  if(!useQrCode && !sock.authState.creds.registered) {
+  if(!useQrCode && !client.authState.creds.registered) {
     const phoneNumber = await question('Please enter your mobile phone number:\n');
-    const code = await sock.requestPairingCode(
-        phoneNumber.replace(/[^0-9]/g, "")
+    const code = await client.requestPairingCode(
+        phoneNumber.replace(/[^0-9]/g, '')
     );
     console.log(`Pairing code: ${code}`)
   }
 
-  sock.ev.on("connection.update", async(update) => {
+  client.ev.on('connection.update', async(update) => {
     const { connection, lastDisconnect, qr } = update || {};
+
+    if (connection){
+      console.log(`Connection Status: ${connection}`);
+    }
 
     if (useQrCode && qr) {
       console.log(qr);
     }
 
-    if (connection == "close") {
+    if (connection == 'close') {
+      console.log('Connection lost!')
       const shouldReconnect =
         lastDisconnect?.error?.output?.statusCode != DisconnectReason.loggedOut;
 
       if (shouldReconnect) {
+        console.log('Reconnecting...')
         connectionLogic();
       }
     }
   });
 
-  sock.ev.on("messages.upsert", async(event) => {
+  client.ev.on('messages.upsert', async(event) => {
     for (const message of event.messages) {
       if (devMode && !config.whitelist.includes(message.key.remoteJid)){
-        console.log("Pulando mensagem, o número não está na whitelist!");
+        console.log('Skipping message, the number is not on the whitelist!');
         continue;
       } else {
         await handleIncomingMessage(message);
@@ -152,7 +176,7 @@ async function connectionLogic() {
     }
   });
 
-  sock.ev.on("creds.update", saveCreds);
+  client.ev.on('creds.update', saveCreds);
 }
 
 connectionLogic();

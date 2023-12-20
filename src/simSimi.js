@@ -1,5 +1,11 @@
+require('dotenv').config();
 const axios = require('axios');
-const { apiKey } = require('./config');
+const apiKey = process.env.SIMI_API_TOKEN;// Grab one at https://workshop.simsimi.com
+
+if (!apiKey) {
+  console.error('SimSimi API Key not found. Make sure to set the SIMI_API_TOKEN environment variable, Grab one at https://workshop.simsimi.com');
+  process.exit(1);
+}
 
 async function simSimiConversation(utext) {
   const url = 'https://wsapi.simsimi.com/190410/talk';
@@ -19,15 +25,14 @@ async function simSimiConversation(utext) {
 
     if (response.status === 200) {
       const result = response.data;
-      return result.atext; // Retorna a resposta do SimSimi
+      return result.atext;
     } else {
-      console.error(`Erro na resposta do SimSimi: ${response.status}`);
-      return null; // Ou você pode lançar uma exceção, dependendo do seu caso
+      console.error(`Error in SimSimi's response: ${response.status}`);
     }
   } catch (error) {
-    console.error('Erro na requisição:', error.message);
-    return null; // Ou você pode lançar uma exceção, dependendo do seu caso
+    console.error('Request error:', error.message);
   }
+  return null;
 }
 
 module.exports = simSimiConversation;
