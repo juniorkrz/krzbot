@@ -7,7 +7,8 @@ const {
   useMultiFileAuthState,
   isJidGroup,
   fetchLatestBaileysVersion,
-  WA_DEFAULT_EPHEMERAL
+  WA_DEFAULT_EPHEMERAL,
+  delay
 } = require("@whiskeysockets/baileys");
 const makeWASocket = require("@whiskeysockets/baileys").default;
 
@@ -35,10 +36,8 @@ async function reactMessage(message, reaction){
 }
 
 async function sendMessage(message, response) {
-  // Calculate the delay relative to the length of the response
-  const delay = response.length * 100; // For example, 100 milliseconds per character
-  await new Promise(resolve => setTimeout(resolve, delay));
-  await sock.sendPresenceUpdate('paused', jid)
+  await delay(response.length * 100); // For example, 100 milliseconds per character
+  await sock.sendPresenceUpdate('paused', message.key.remoteJid)
   return sock.sendMessage(message.key.remoteJid, { text: response }, { quoted: message, ephemeralExpiration: WA_DEFAULT_EPHEMERAL });
 }
 
@@ -90,7 +89,7 @@ async function handleIncomingMessage(message) {
     } else {
       // Send a presence update
       await sock.presenceSubscribe(message.key.remoteJid)
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await delay(500);
       await sock.sendPresenceUpdate('composing', message.key.remoteJid)
       response = await simSimiConversation(senderMessage);
     }
