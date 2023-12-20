@@ -1,18 +1,28 @@
 const config = require('./config');
+const readline = require('readline');
 const simSimiConversation = require('./simSimi');
 const spin_text = require('./utils/utils');
 const {
   DisconnectReason,
   useMultiFileAuthState,
   isJidGroup,
+  fetchLatestBaileysVersion,
   WA_DEFAULT_EPHEMERAL
 } = require("@whiskeysockets/baileys");
 const makeWASocket = require("@whiskeysockets/baileys").default;
 
+const P = require("pino")({
+  level: "silent",
+});
+
 let sock;
 
-const args = process.argv.slice(2);
-const devMode = args.indexOf('--dev') == 0 || config.devMode;
+const devMode = process.argv.includes('--dev') || config.devMode;
+const useQrCode = process.argv.includes('--qrcode')
+
+// Read line interface
+const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+const question = (text) => new Promise((resolve) => rl.question(text, resolve));
 
 async function reactMessage(message, reaction){
   const reactionMessage = {
@@ -97,15 +107,29 @@ async function handleIncomingMessage(message) {
 
 async function connectionLogic() {
   const { state, saveCreds } = await useMultiFileAuthState("auth_info_baileys");
+  const { version, isLatest } = await fetchLatestBaileysVersion();
   sock = makeWASocket({
-    printQRInTerminal: true,
+    version: version,
+    logger: P,
+    printQRInTerminal: useQrCode,
+    mobile: false,
+    browser: ['Chrome (Linux)', '', ''],// If you change this then the pairing code will not work!!!
     auth: state,
   });
+
+  // Pairing code for Web clients
+  if(!useQrCode && !sock.authState.creds.registered) {
+    const phoneNumber = await question('Please enter your mobile phone number:\n');
+    const code = await sock.requestPairingCode(
+        phoneNumber.replace(/[^0-9]/g, "")
+    );
+    console.log(`Pairing code: ${code}`)
+  }
 
   sock.ev.on("connection.update", async(update) => {
     const { connection, lastDisconnect, qr } = update || {};
 
-    if (qr) {
+    if (useQrCode && qr) {
       console.log(qr);
     }
 
