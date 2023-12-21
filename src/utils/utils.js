@@ -1,3 +1,7 @@
+const readline = require('readline');
+
+const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+
 const spin_text = (text) => {
     const pattern = /\{([^{}]+)\}/g;
 
@@ -12,4 +16,4 @@ const spin_text = (text) => {
     return text;
 };
 
-module.exports = spin_text;
+module.exports = { spin_text, rl };

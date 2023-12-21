@@ -1,4 +1,4 @@
-const readline = require('readline');
+const fs = require('fs');
 const P = require('pino')({ level: 'silent' });
 const {
   DisconnectReason,
@@ -13,16 +13,16 @@ const {
 const makeWASocket = require('@whiskeysockets/baileys').default;
 
 const config = require('./config');
-const simSimiConversation = require('./simSimi');
-const spin_text = require('./utils/utils');
+const { spin_text, rl } = require('./utils/utils');
+const createOrUpdateEnv = require('./utils/envHandler');
 
 const devMode = process.argv.includes('--dev') || config.devMode;
 const useQrCode = process.argv.includes('--qrcode') || config.useQrCode;
 
 let client;
+let simSimiConversation;
 
 // Read line interface
-const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 const question = (text) => new Promise((resolve) => rl.question(text, resolve));
 
 async function reactMessage(message, reaction){
@@ -122,6 +122,7 @@ async function handleIncomingMessage(message) {
 
 async function connectionLogic() {
   console.log('Starting...')
+  simSimiConversation = require('./simSimi');
   const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
   const { version, isLatest } = await fetchLatestBaileysVersion();
   client = makeWASocket({
@@ -179,4 +180,11 @@ async function connectionLogic() {
   client.ev.on('creds.update', saveCreds);
 }
 
-connectionLogic();
+async function start(){
+  if (!fs.existsSync('.env')) {
+    await createOrUpdateEnv();
+  }
+  connectionLogic();
+}
+
+start();
