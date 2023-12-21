@@ -31,7 +31,7 @@ Follow these steps to run the krzbot project using Termux:
 5. **Install project dependencies:**
 
     ```bash
-    npm -i
+    npm install
     ```
 
 6. **Start the krzbot:**
