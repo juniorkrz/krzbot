@@ -9,7 +9,7 @@ function questionAsync(prompt) {
 
 async function createOrUpdateEnv() {
   // Ask the user for their SIMI_API_TOKEN using a promise
-  const simiApiToken = await questionAsync('Enter your SIMI_API_TOKEN: ');
+  const simiApiToken = await questionAsync('Enter your SIMI_API_TOKEN (Grab one at https://workshop.simsimi.com): ');
 
   // Create the content for the .env file
   const envContent = `SIMI_API_TOKEN=${simiApiToken}\n`;
