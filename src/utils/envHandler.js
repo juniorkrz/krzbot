@@ -18,9 +18,6 @@ async function createOrUpdateEnv() {
   fs.writeFileSync('.env', envContent, { flag: 'w' });
 
   console.log('.env file created successfully!');
-
-  // Close the readline interface
-  rl.close();
 }
 
 module.exports = createOrUpdateEnv;
