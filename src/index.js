@@ -44,7 +44,7 @@ function getMentionedJids(message){
 function getMessageExpiration(message){
   return (
     message.message?.ephemeralMessage?.message?.extendedTextMessage?.contextInfo?.expiration ||// WhatsApp Desktop
-    message.message?.extendedTextMessage?.contextInfo?.expiration// WhatsApp Mobile
+    message.message?.extendedTextMessage?.contextInfo?.expiration// WhatsApp Mobile and WhatsApp Web
   );
 }
 
