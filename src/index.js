@@ -5,7 +5,6 @@ const {
   useMultiFileAuthState,
   isJidGroup,
   fetchLatestBaileysVersion,
-  WA_DEFAULT_EPHEMERAL,
   delay,
   jidNormalizedUser,
   areJidsSameUser,
@@ -25,6 +24,34 @@ let simSimiConversation;
 // Read line interface
 const question = (text) => new Promise((resolve) => rl.question(text, resolve));
 
+function getBody(message) {
+  // Extract the message body from different possible locations
+  return (
+    message.message.extendedTextMessage?.text ||
+    message.message.conversation ||
+    message.message.ephemeralMessage?.message?.extendedTextMessage?.text ||
+    message.message.ephemeralMessage?.message?.conversation ||
+    ''
+  );
+}
+
+function getMentionedJids(message){
+  const mentionedJid = message.message?.extendedTextMessage?.contextInfo?.mentionedJid;
+  const ephemeralMentionedJid = message.message?.ephemeralMessage?.message?.extendedTextMessage?.contextInfo?.mentionedJid;
+  return mentionedJid || ephemeralMentionedJid;
+}
+
+function getMessageExpiration(message){
+  return (
+    message.message?.ephemeralMessage?.message?.extendedTextMessage?.contextInfo?.expiration ||// WhatsApp Desktop
+    message.message?.extendedTextMessage?.contextInfo?.expiration// WhatsApp Mobile
+  );
+}
+
+function getPhoneFromJid(jid){
+  return jidNormalizedUser(jid).split('@')[0];
+}
+
 async function reactMessage(message, reaction){
   const reactionMessage = {
     react: {
@@ -32,19 +59,14 @@ async function reactMessage(message, reaction){
         key: message.key
     }
   }
-  return await client.sendMessage(message.key.remoteJid, reactionMessage, { ephemeralExpiration: WA_DEFAULT_EPHEMERAL });
+  return await client.sendMessage(message.key.remoteJid, reactionMessage);
 }
 
 async function sendMessage(message, response) {
+  const expiration = getMessageExpiration(message);
   await delay(response.length * 100); // For example, 100 milliseconds per character
   await client.sendPresenceUpdate('paused', message.key.remoteJid)
-  return client.sendMessage(message.key.remoteJid, { text: response }, { quoted: message, ephemeralExpiration: WA_DEFAULT_EPHEMERAL });
-}
-
-function getMentionedJids(message){
-  const mentionedJid = message.message?.extendedTextMessage?.contextInfo?.mentionedJid;
-  const ephemeralMentionedJid = message.message?.ephemeralMessage?.message?.extendedTextMessage?.contextInfo?.mentionedJid;
-  return mentionedJid || ephemeralMentionedJid;
+  return client.sendMessage(message.key.remoteJid, { text: response }, { quoted: message, ephemeralExpiration: expiration});
 }
 
 function shouldResponse(message) {
@@ -64,21 +86,6 @@ function shouldResponse(message) {
     mentionedJids?.includes(clientJid) ||
     areJidsSameUser(participant, clientJid)
   );
-}
-
-function getBody(message) {
-  // Extract the message body from different possible locations
-  return (
-    message.message.extendedTextMessage?.text ||
-    message.message.conversation ||
-    message.message.ephemeralMessage?.message?.extendedTextMessage?.text ||
-    message.message.ephemeralMessage?.message?.conversation ||
-    ''
-  );
-}
-
-function getPhoneFromJid(jid){
-  return jidNormalizedUser(jid).split('@')[0];
 }
 
 async function handleIncomingMessage(message) {
@@ -169,7 +176,7 @@ async function connectionLogic() {
   client.ev.on('messages.upsert', async(event) => {
     for (const message of event.messages) {
       if (devMode && !config.whitelist.includes(message.key.remoteJid)){
-        console.log('Skipping message, the number is not on the whitelist!');
+        console.log(`Skipping message, the number ${message.key.remoteJid} is not on the whitelist!`);
         continue;
       } else {
         await handleIncomingMessage(message);
