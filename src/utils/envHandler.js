@@ -9,10 +9,10 @@ function questionAsync(prompt) {
 
 async function createOrUpdateEnv() {
   // Ask the user for their SIMI_API_TOKEN using a promise
-  const simiApiToken = await questionAsync('Enter your KRZBOT_API_TOKEN: ');
+  const apiToken = await questionAsync('Enter your KRZBOT_API_TOKEN: ');
 
   // Create the content for the .env file
-  const envContent = `KRZBOT_API_TOKEN=${simiApiToken}\n`;
+  const envContent = `KRZBOT_API_TOKEN=${apiToken}\n`;
 
   // Write the content to the .env file
   fs.writeFileSync('.env', envContent, { flag: 'w' });
