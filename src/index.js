@@ -14,12 +14,13 @@ const makeWASocket = require('@whiskeysockets/baileys').default;
 const config = require('./config');
 const { spin_text, rl } = require('./utils/utils');
 const createOrUpdateEnv = require('./utils/envHandler');
+const getKrzBotResponse = require('./api');
 
 const devMode = process.argv.includes('--dev') || config.devMode;
 const useQrCode = process.argv.includes('--qrcode') || config.useQrCode;
 
 let client;
-let simSimiConversation;
+let api;
 
 // Read line interface
 const question = (text) => new Promise((resolve) => rl.question(text, resolve));
@@ -114,7 +115,7 @@ async function handleIncomingMessage(message) {
       await client.presenceSubscribe(message.key.remoteJid)
       await delay(500);
       await client.sendPresenceUpdate('composing', message.key.remoteJid)
-      response = await simSimiConversation(senderMessage);
+      response = await getKrzBotResponse(senderMessage);
     }
 
     if (!response){
@@ -129,7 +130,7 @@ async function handleIncomingMessage(message) {
 
 async function connectionLogic() {
   console.log('Starting...')
-  simSimiConversation = require('./simSimi');
+  api = require('./api');
   const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
   const { version, isLatest } = await fetchLatestBaileysVersion();
   client = makeWASocket({
