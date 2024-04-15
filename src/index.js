@@ -14,7 +14,6 @@ const makeWASocket = require('@whiskeysockets/baileys').default;
 const config = require('./config');
 const { spin_text, rl } = require('./utils/utils');
 const createOrUpdateEnv = require('./utils/envHandler');
-const getKrzBotResponse = require('./api');
 
 const devMode = process.argv.includes('--dev') || config.devMode;
 const useQrCode = process.argv.includes('--qrcode') || config.useQrCode;
