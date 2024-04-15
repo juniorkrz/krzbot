@@ -19,7 +19,7 @@ const devMode = process.argv.includes('--dev') || config.devMode;
 const useQrCode = process.argv.includes('--qrcode') || config.useQrCode;
 
 let client;
-let api;
+let getKrzBotResponse;
 
 // Read line interface
 const question = (text) => new Promise((resolve) => rl.question(text, resolve));
@@ -129,7 +129,7 @@ async function handleIncomingMessage(message) {
 
 async function connectionLogic() {
   console.log('Starting...')
-  api = require('./api');
+  getKrzBotResponse = require('./api');
   const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
   const { version, isLatest } = await fetchLatestBaileysVersion();
   client = makeWASocket({
