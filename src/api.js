@@ -1,6 +1,5 @@
 require('dotenv').config();
 const axios = require('axios');
-const querystring = require('querystring');
 const apiToken = process.env.KRZBOT_API_TOKEN;
 
 if (!apiToken) {
@@ -11,7 +10,7 @@ if (!apiToken) {
 const KRZBOT_API_URL = "http://stickerbot.duckdns.org:5000/get_response";
 
 async function getKrzBotResponse(question) {
-  const url = `${KRZBOT_API_URL}/${querystring.escape(question)}`;
+  const url = `${KRZBOT_API_URL}/${encodeURIComponent(question)}`;
   const headers = {
     'Authorization': `Bearer ${apiToken}`
   };
